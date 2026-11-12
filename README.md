@@ -118,4 +118,4 @@ If you use `dms-fdmcorrect`, please cite nf-core/deepmutscan:
 
 ## License
 
-MIT, see [LICENSE.md](LICENSE.md).
+MIT, see [LICENSE](LICENSE).
