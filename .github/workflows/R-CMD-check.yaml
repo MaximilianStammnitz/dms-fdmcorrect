@@ -1,0 +1,34 @@
+name: R-CMD-check
+on: [push, pull_request]
+jobs:
+  R-CMD-check:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          args: 'c("--no-manual")'
+          error-on: '"error"'
+      - name: Command-line example
+        run: |
+          R CMD INSTALL .
+          S=$(Rscript -e 'cat(system.file("scripts", "dms-fdmcorrect", package = "fdmcorrect"))')
+          X=$(Rscript -e 'cat(system.file("extdata", package = "fdmcorrect"))')
+          Rscript "$S" --version
+          Rscript "$S" run --counts $X/GID1A_input.variant_counts.tsv.gz $X/GID1A_output.variant_counts.tsv.gz \
+            --codon_library $X/GID1A_codon_library.csv.gz --reference $X/GID1A.fasta --pool GID1A --outdir gid1a
+          test -s gid1a/GID1A_input/fdm_corrected_counts.csv
