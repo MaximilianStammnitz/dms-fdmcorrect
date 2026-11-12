@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use dms-fdmcorrect, please cite nf-core/deepmutscan."
+title: "dms-fdmcorrect: sequencing-error correction of deep mutational scanning counts by false double mutants"
+type: software
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/MaximilianStammnitz/dms-fdmcorrect"
+authors:
+  - family-names: Stammnitz
+    given-names: Maximilian R.
+    email: maximilian.stammnitz@crg.eu
+    affiliation: "Centre for Genomic Regulation (CRG), Barcelona"
+references:
+  - type: software
+    title: "nf-core/deepmutscan"
+    url: "https://nf-co.re/deepmutscan"

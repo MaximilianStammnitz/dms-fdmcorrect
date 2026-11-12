@@ -1,0 +1,21 @@
+Package: fdmcorrect
+Type: Package
+Title: Sequencing-Error Correction of Deep Mutational Scanning Counts by False Double Mutants
+Version: 0.1.0
+Authors@R: person("Maximilian R.", "Stammnitz", email = "maximilian.stammnitz@crg.eu", role = c("aut", "cre", "cph"))
+Description: Estimates the sequencing and PCR error rate of every single-nucleotide variant in a
+    deep mutational scanning library from false double mutants, reads that carry a programmed
+    multi-nucleotide codon variant together with a single-nucleotide change nearby, and subtracts
+    the expected error reads from the variant counts. Rates are estimated with an empirical-Bayes
+    Gamma-Poisson model with substitution-type and trinucleotide-context priors, pooled across
+    libraries, with genuine double mutants removed from the evidence. Reads variant count tables
+    in the format of 'dms_count'; used by the 'nf-core/deepmutscan' pipeline.
+License: MIT + file LICENSE
+URL: https://github.com/MaximilianStammnitz/dms-fdmcorrect
+BugReports: https://github.com/MaximilianStammnitz/dms-fdmcorrect/issues
+Encoding: UTF-8
+Depends: R (>= 4.1)
+Imports: data.table (>= 1.14)
+Suggests: testthat (>= 3.0.0)
+Config/testthat/edition: 3
+RoxygenNote: 7.3.1

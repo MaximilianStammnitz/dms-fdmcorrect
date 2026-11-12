@@ -1,0 +1,8 @@
+#!/usr/bin/env Rscript
+## Command-line interface of the R package fdmcorrect; see `dms-fdmcorrect --help`.
+status <- tryCatch(fdmcorrect::fdm_cli(commandArgs(trailingOnly = TRUE)),
+                   error = function(e) {
+                       message("dms-fdmcorrect: error: ", conditionMessage(e))
+                       1L
+                   })
+quit(save = "no", status = status)
