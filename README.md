@@ -3,11 +3,11 @@
 `dms-fdmcorrect` corrects the counts of single-nucleotide variants (SNVs) in deep mutational scanning (DMS) data for sequencing and PCR errors, using the programmed variant library itself as the error control. It thereby avoids the need for additional wildtype template processing and deep sequencing.
 
 ```
-  >>>>>>XXX>>>>>>>>>>>>>>>>>
-  >>>>>>XXX>>>>>>>>>>>x>>>>>                       A2P    |||||||||         \(o_o)/           |
-  >>>>>>>>>>>>>>>>>>>>x>>>>>   ==> dms_count ==>   L109M  |||||||||  ==> dms-fdmcorrect ==>   ||||||
-  >>>>>>>>>>>>>>>XXX>>>>>>>>                       E46A   |||||||||                           ||||||||
-  >>>>>>>>>>>>>>>>>>>>>>>>>>
+  >>>>XXX>>>>>>>>>>>>>>>>>
+  >>>>XXX>>>>>>>>>>>x>>>>>                     A2P    |||||||||         \(o_o)/           |
+  >>>>>>>>>>>>>>>>>>x>>>>>   -> dms_count ->   L109M  |||||||||  ==> dms-fdmcorrect ==>   ||||||
+  >>>>>>>>>>>>>XXX>>>>>>>>                     E46A   |||||||||                           ||||||||
+  >>>>>>>>>>>>>>>>>>>>>>>>
 
   XXX programmed codon (anchor)    x single-nucleotide change    XXX + x: false double
 ```
