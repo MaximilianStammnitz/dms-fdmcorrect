@@ -28,16 +28,6 @@ NULL
 DMS_COUNT_COLUMNS <- c("counts", "cov", "mean_length_variant_reads", "varying_bases",
                        "base_mut", "varying_codons", "codon_mut", "aa_mut", "pos_mut")
 
-## a gzip-compressed table decompressed to a temporary file (data.table::fread needs R.utils for .gz)
-plain_path <- function(path) {
-    if (!grepl("\\.gz$", path)) return(path)
-    tmp <- tempfile(fileext = ".tsv")
-    con <- gzfile(path, "rb")
-    on.exit(close(con))
-    writeLines(readLines(con, warn = FALSE), tmp)
-    tmp
-}
-
 write_table <- function(x, outdir, name, row.names = FALSE) {
     dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
     path <- file.path(outdir, name)
@@ -115,7 +105,7 @@ fdm_library_variants <- function(raw_counts, codon_library, out = NULL) {
 #' @export
 fdm_evidence <- function(raw_counts, library_variants, reference, id = "library",
                          max_fd_dist = 40, min_fd_dist = 13, outdir = NULL) {
-    res <- evidence_core(raw_path = plain_path(raw_counts), filtered_path = library_variants, wt_path = reference,
+    res <- evidence_core(raw_path = raw_counts, filtered_path = library_variants, wt_path = reference,
                          max_fd_dist = max_fd_dist, min_fd_dist = min_fd_dist)
     ev <- res[["evidence"]]
     ev[["library"]] <- id

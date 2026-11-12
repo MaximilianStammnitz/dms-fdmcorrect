@@ -31,7 +31,8 @@
 ##      sequencing depth. The excluded region is summarised (near_*) and profiled by distance for the report.
 ##
 ## Implementation notes (same results as the first vectorised version, less time):
-##   - the raw count table is read with data.table::fread, only the five columns this step uses;
+##   - the raw count table is read with scan() (base R; gzip-compressed files too), only the five
+##     columns this step uses;
 ##   - the reference is read with readLines (no Biostrings; loading it cost more than the whole analysis);
 ##   - the per-codon mismatch count, the (SNV, anchor) grid and its keys are vectorised instead of
 ##     built per SNV, and all group keys are integers rather than pasted strings.
@@ -175,10 +176,12 @@ evidence_core <- function(raw_path, filtered_path, wt_path, max_fd_dist, min_fd_
     wt_seq <- read_first_fasta(wt_path)
 
     ## the raw table has no header; only counts, cov, varying_bases, varying_codons and codon_mut are used
-    raw <- data.table::fread(raw_path, sep = "\t", header = FALSE, quote = "", select = c(1L, 2L, 4L, 6L, 7L),
-                 col.names = c("counts", "cov", "varying_bases", "varying_codons", "codon_mut"),
-                 colClasses = list(integer = c(1L, 2L, 4L, 6L), character = 7L),
-                 fill = TRUE, data.table = FALSE, showProgress = FALSE, nThread = 1L)
+    raw <- scan(raw_path, what = list(integer(), integer(), NULL, integer(), NULL, integer(), character(), NULL, NULL),
+                sep = "\t", quote = "", comment.char = "", fill = TRUE, na.strings = c("NA", ""),
+                quiet = TRUE, multi.line = FALSE)
+    raw <- raw[!vapply(raw, is.null, logical(1))]
+    names(raw) <- c("counts", "cov", "varying_bases", "varying_codons", "codon_mut")
+    raw <- as.data.frame(raw, stringsAsFactors = FALSE)
     proc <- read.csv(filtered_path, stringsAsFactors = FALSE)
     proc[["codon"]] <- codon_of(proc[["codon_mut"]])
     max_codon <- max(codon_of(raw[["codon_mut"]]), na.rm = TRUE)
