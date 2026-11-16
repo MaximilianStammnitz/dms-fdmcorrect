@@ -103,7 +103,9 @@ Pooling assumes one error process: libraries prepared, amplified and sequenced t
 Notes:
 
 - Only SNVs are corrected. Two- or three-nucleotide codon changes are assumed to be counted with negligible error.
-- A pool with fewer than 100 false-double reads is left uncorrected.
+- A pool with fewer than 100 false-double reads (`eb`) or 1,000 (`mle`) is left uncorrected: on pools thinned to a fraction of their reads, the `eb` rates were closer to the full-depth ones than no correction at every depth, the per-SNV `mle` ratio only above about 500-1,000 false-double reads.
+- Libraries are pooled in the order of their names, whatever order the files are given in.
+- The reference may be soft-masked (lower case).
 - An SNV without any anchor in its window gets the prior mean of its class with `eb`, and stays uncorrected with `mle`.
 
 ## Tests

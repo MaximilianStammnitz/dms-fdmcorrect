@@ -28,7 +28,11 @@
 
 NU_INTERVAL        <- c(1e-6, 1e12)  # search interval for nu (in exposure units, i.e. reads)
 MIN_CLASS_SNVS     <- 10L            # fewer exposed SNVs in a class -> the class uses its parent's nu
-MIN_POOL_FD_READS  <- 100            # fewer false-double reads in the whole pool -> no correction
+## Fewer false-double reads in the whole pool -> no correction. On GID1A and OsTIR1 pools thinned to
+## 0.02-30 % of their reads, the empirical-Bayes rates beat no correction at every depth, and 100 reads
+## keep the pool's overall rate within ~10 %; the per-SNV ratio F/M is worse than no correction below
+## ~500-1000 reads.
+MIN_POOL_FD_READS  <- c(eb = 100, mle = 1000)
 
 ## negative-binomial marginal of Gamma-Poisson with fixed prior mean mu, as a function of log(nu)
 gp_negloglik <- function(log_nu, y, m, mu) {
@@ -153,16 +157,18 @@ estimate_core <- function(ev, method = "eb", prior = "substitution_type", kw = N
     if (is.null(kw)) kw <- rep(0, length(y))
     if (is.null(f_obs)) f_obs <- rep(0, length(y))
     kw <- ifelse(is.finite(kw), kw, 0); f_obs <- ifelse(is.finite(f_obs), f_obs, 0)
+    na <- rep(NA_real_, length(y))
     est <- data.frame(base_mut = ev[["base_mut"]], type = ev[["type"]], context = ev[["context"]],
-                      F = y, M = m, kappa_exposure = kw, G = 0, F_error = y,
-                      prior_mean = NA_real_, prior_nu = NA_real_, shrinkage_weight = NA_real_,
-                      e = NA_real_, stringsAsFactors = FALSE)
+                      F = y, M = m, kappa_exposure = kw, G = rep(0, length(y)), F_error = y,
+                      prior_mean = na, prior_nu = na, shrinkage_weight = na,
+                      e = na, stringsAsFactors = FALSE)
     usable <- is.finite(m) & is.finite(y)
-    if (!any(usable & m > 0) || sum(y[usable]) < MIN_POOL_FD_READS) {
+    min_fd <- MIN_POOL_FD_READS[[method]]
+    if (!any(usable & m > 0) || sum(y[usable]) < min_fd) {
         ## too few false doubles in the whole pool to estimate an error rate: leave counts as they are
         return(list(rates = est, prior = NULL,
                     note = paste0("only ", sum(y[usable]), " false-double read(s) in the pool (minimum ",
-                                  MIN_POOL_FD_READS, ") - no correction applied")))
+                                  min_fd, " for method ", method, ") - no correction applied")))
     }
     mm <- ifelse(usable, m, 0)
 
@@ -229,8 +235,9 @@ pool_evidence <- function(evs) {
     all <- all[is.finite(all[["F"]]) & is.finite(all[["M"]]), , drop = FALSE]
     keys <- unique(do.call(rbind, lapply(evs, function(e) e[, c("base_mut", "type", "context")])))
     if (nrow(all) == 0) {
-        keys[["F"]] <- NA_real_; keys[["M"]] <- NA_real_
-        keys[["counts"]] <- NA_real_; keys[["cov"]] <- NA_real_
+        na <- rep(NA_real_, nrow(keys))
+        keys[["F"]] <- na; keys[["M"]] <- na
+        keys[["counts"]] <- na; keys[["cov"]] <- na
         return(list(pooled = keys, n_libraries = length(evs), n_informative = 0L))
     }
     s <- aggregate(cbind(F, M, counts, cov) ~ base_mut, data = all, FUN = sum)

@@ -1,7 +1,7 @@
 Package: fdmcorrect
 Type: Package
 Title: Sequencing-Error Correction of Deep Mutational Scanning Counts by False Double Mutants
-Version: 0.1.1
+Version: 0.1.2
 Authors@R: person("Maximilian R.", "Stammnitz", email = "maximilian.stammnitz@crg.eu", role = c("aut", "cre", "cph"))
 Description: Estimates the sequencing and PCR error rate of every single-nucleotide variant in a
     deep mutational scanning library from false double mutants, reads that carry a programmed

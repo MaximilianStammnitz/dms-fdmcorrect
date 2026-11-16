@@ -108,7 +108,7 @@ fdm_evidence <- function(raw_counts, library_variants, reference, id = "library"
     res <- evidence_core(raw_path = raw_counts, filtered_path = library_variants, wt_path = reference,
                          max_fd_dist = max_fd_dist, min_fd_dist = min_fd_dist)
     ev <- res[["evidence"]]
-    ev[["library"]] <- id
+    ev[["library"]] <- rep(id, nrow(ev))   # rep(): a library without SNVs or anchors gives tables with no rows
     info <- as.data.frame(res[["info"]])
     info[["sample"]] <- id
     info[["n_snv_F0"]] <- sum(ev[["F"]] == 0, na.rm = TRUE)
@@ -119,9 +119,9 @@ fdm_evidence <- function(raw_counts, library_variants, reference, id = "library"
     info[["near_rate"]] <- if (isTRUE(info[["near_exposure"]] > 0)) info[["near_reads"]] / info[["near_exposure"]] else NA_real_
     info[["far_rate"]] <- if (isTRUE(info[["far_exposure"]] > 0)) info[["far_reads"]] / info[["far_exposure"]] else NA_real_
     prof <- res[["profile"]]
-    prof[["library"]] <- id
+    prof[["library"]] <- rep(id, nrow(prof))
     exp_d <- res[["exposure"]]
-    exp_d[["library"]] <- id
+    exp_d[["library"]] <- rep(id, nrow(exp_d))
     if (!res[["info"]][["decay_estimable"]])
         message("WARNING: fewer than 3 codon distances with usable false double mutants - the joint-coverage\n",
                 "decay is not estimable, so this library contributes no error evidence. If it is pooled with\n",
@@ -171,8 +171,11 @@ fdm_estimate <- function(evidence, profiles = NULL, exposures = NULL, id = "pool
     }
     if (is.null(profiles)) profiles <- sibling("fdm_distance_profile.csv")
     if (is.null(exposures)) exposures <- sibling("fdm_exposure_by_distance.csv")
-    profiles <- Filter(nzchar, profiles)
-    exposures <- Filter(nzchar, exposures)
+    ## the files of a pool in the order of their library names: floating-point sums depend on the
+    ## order of their terms, so the estimate must not depend on the order the files are given in
+    evidence <- by_library(evidence)
+    profiles <- by_library(Filter(nzchar, profiles))
+    exposures <- by_library(Filter(nzchar, exposures))
 
     evidence_tables <- lapply(evidence, read.csv, stringsAsFactors = FALSE)
     pool <- pool_evidence(evidence_tables)
@@ -193,35 +196,37 @@ fdm_estimate <- function(evidence, profiles = NULL, exposures = NULL, id = "pool
 
     if (isTRUE(wildtype)) {
         wt_rates <- pool[["pooled"]]
-        wt_rates[["kappa_exposure"]] <- 0
-        wt_rates[["G"]] <- 0
+        n_wt <- nrow(wt_rates); na <- rep(NA_real_, n_wt)
+        wt_rates[["kappa_exposure"]] <- rep(0, n_wt)
+        wt_rates[["G"]] <- rep(0, n_wt)
         wt_rates[["F_error"]] <- wt_rates[["F"]]
-        wt_rates[["prior_mean"]] <- NA_real_; wt_rates[["prior_nu"]] <- NA_real_
-        wt_rates[["shrinkage_weight"]] <- NA_real_; wt_rates[["e"]] <- NA_real_
+        wt_rates[["prior_mean"]] <- na; wt_rates[["prior_nu"]] <- na
+        wt_rates[["shrinkage_weight"]] <- na; wt_rates[["e"]] <- na
         res <- list(rates = wt_rates,
                     prior = NULL, note = "wildtype-template library - no false-double correction applied")
     } else {
         res <- estimate_core(pool[["pooled"]], method = method, prior = prior, kw = kw, f_obs = f_obs)
     }
     message("Estimator: ", res[["note"]])
-    kp[["pool"]] <- id
+    kp[["pool"]] <- rep(id, nrow(kp))
     rates <- res[["rates"]]
-    rates[["pool"]] <- id
+    rates[["pool"]] <- rep(id, nrow(rates))
 
     per_lib <- lapply(seq_along(evidence), function(q) {
         f <- evidence[q]; e <- evidence_tables[[q]]
         lib <- if ("library" %in% names(e)) e[["library"]][1] else basename(dirname(f))
         one <- e[is.finite(e[["F"]]) & is.finite(e[["M"]]), c("base_mut", "type", "context", "F", "M"), drop = FALSE]
         r <- if (isTRUE(wildtype) || nrow(one) == 0) {
-            data.frame(base_mut = e[["base_mut"]], F = e[["F"]], M = e[["M"]], e = NA_real_, shrinkage_weight = NA_real_)
+            data.frame(base_mut = e[["base_mut"]], F = e[["F"]], M = e[["M"]], e = rep(NA_real_, nrow(e)),
+                       shrinkage_weight = rep(NA_real_, nrow(e)))
         } else {
             estimate_core(one, method = method, prior = prior)[["rates"]][, c("base_mut", "F", "M", "e", "shrinkage_weight")]
         }
-        r[["library"]] <- lib
+        r[["library"]] <- rep(lib, nrow(r))
         r
     })
     per_lib <- do.call(rbind, per_lib)
-    per_lib[["pool"]] <- id
+    per_lib[["pool"]] <- rep(id, nrow(per_lib))
     pt <- res[["prior"]]
     if (is.null(pt)) {
         pt <- data.frame(level = character(0), class = character(0), n_snv = integer(0), n_snv_exposed = integer(0),
@@ -313,4 +318,15 @@ fdm_run <- function(raw_counts, codon_library, reference, outdir = ".", ids = NU
         fdm_correct(lv[q], file.path(outdir, ids[q], "fdm_evidence.csv"), file.path(outdir, pool, "fdm_rates.csv"),
                     reference, outdir = file.path(outdir, ids[q]))
     invisible(file.path(outdir, ids, "fdm_corrected_counts.csv"))
+}
+
+## the files in the order of their library names (column `library` of their first row; a table without
+## rows sorts last, in the order given)
+by_library <- function(paths) {
+    if (length(paths) < 2) return(paths)
+    lib <- vapply(paths, function(f) {
+        x <- read.csv(f, stringsAsFactors = FALSE, nrows = 1)
+        if ("library" %in% names(x) && nrow(x) > 0) as.character(x[["library"]][1]) else NA_character_
+    }, "")
+    unname(paths[order(lib, na.last = TRUE, method = "radix")])
 }

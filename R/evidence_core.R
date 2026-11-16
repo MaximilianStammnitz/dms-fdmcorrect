@@ -39,13 +39,14 @@
 ##   Row order inside every group is unchanged, so sums are accumulated in the same order and the
 ##   outputs are byte-identical.
 
-## first record of a FASTA file as a character vector of bases (as written, no case change)
+## first record of a FASTA file as a character vector of bases, in upper case (a soft-masked reference
+## would otherwise give lower-case wild-type bases, outside every substitution class)
 read_first_fasta <- function(path) {
     l <- readLines(path, warn = FALSE)
     h <- which(startsWith(l, ">"))
     if (length(h) == 0) stop("no FASTA header line in ", path)
     end <- if (length(h) > 1) h[2] - 1 else length(l)
-    s <- paste(trimws(l[seq.int(h[1] + 1, end)]), collapse = "")
+    s <- toupper(paste(trimws(l[seq.int(h[1] + 1, end)]), collapse = ""))
     strsplit(s, "")[[1]]
 }
 
@@ -73,6 +74,8 @@ n_codon_changes <- function(cm) {
 
 ## pyrimidine-folded substitution type and trinucleotide context (96 classes) of SNV "pos:R>A"
 snv_classes <- function(base_mut, wt_seq) {
+    if (length(base_mut) == 0)
+        return(data.frame(type = character(0), context = character(0), stringsAsFactors = FALSE))
     comp <- c(A = "T", C = "G", G = "C", T = "A", N = "N")
     pos  <- as.integer(sub(":.*", "", base_mut))
     ref  <- substr(sub("^[^:]*:", "", base_mut), 1, 1)
@@ -191,12 +194,12 @@ evidence_core <- function(raw_path, filtered_path, wt_path, max_fd_dist, min_fd_
     cls <- snv_classes(snv[["base_mut"]], wt_seq)
     snv[["type"]] <- cls[["type"]]
     snv[["context"]] <- cls[["context"]]
-    snv[["F"]] <- 0
-    snv[["M"]] <- 0
-    snv[["n_anchor_codons"]] <- 0L
-    snv[["n_fd_codons"]] <- 0L
-    snv[["n_fd_candidates"]] <- 0L
     n_snv <- nrow(snv)
+    snv[["F"]] <- rep(0, n_snv)
+    snv[["M"]] <- rep(0, n_snv)
+    snv[["n_anchor_codons"]] <- rep(0L, n_snv)
+    snv[["n_fd_codons"]] <- rep(0L, n_snv)
+    snv[["n_fd_candidates"]] <- rep(0L, n_snv)
 
     info <- list(n_snv = n_snv, n_fd_raw = 0L, n_fd_used = 0L, min_fd_dist = as.integer(min_fd_dist),
                  decay_estimable = FALSE, decay_b0 = NA_real_, decay_b1 = NA_real_, decay_b2 = NA_real_,
@@ -230,8 +233,8 @@ evidence_core <- function(raw_path, filtered_path, wt_path, max_fd_dist, min_fd_
     perc <- 100 * fd[["cov"]] / pair_min(m1, m2)
     usable <- is.finite(log(perc))
     if (nrow(fd) == 0 || length(unique(fd[["codon_dist"]][usable])) < 3) {
-        snv[["M"]] <- NA_real_
-        snv[["F"]] <- NA_real_
+        snv[["M"]] <- rep(NA_real_, n_snv)
+        snv[["F"]] <- rep(NA_real_, n_snv)
         return(list(evidence = snv, info = info, profile = profile, exposure = exposure0))
     }
     d  <- fd[["codon_dist"]][usable]
@@ -310,7 +313,7 @@ evidence_core <- function(raw_path, filtered_path, wt_path, max_fd_dist, min_fd_
     far <- !near
     gi <- gi[far]; g_F <- g_F[far]; g_m <- g_m[far]; g_dist <- g_dist[far]; hit <- hit[far]
     if (length(gi) == 0) {
-        snv[["M"]] <- 0; snv[["F"]] <- 0
+        snv[["M"]] <- rep(0, n_snv); snv[["F"]] <- rep(0, n_snv)
         return(list(evidence = snv, info = info, profile = profile, exposure = exposure0))
     }
 
